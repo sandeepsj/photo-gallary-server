@@ -50,6 +50,52 @@ function getImages(path, callBack) {
   });
 }
 
+function login(user, password, callBack) {
+  if (fs.existsSync(`${baseDir}/${user}`)) {
+    let profile = JSON.parse(
+      fs.readFileSync(`${baseDir}/${user}/profile.json`)
+    );
+    if (profile.password === password) {
+      callBack();
+    } else {
+      throw `password is incorrect for user - ${user}`;
+    }
+  } else {
+    throw `User does not exists - ${user}`;
+  }
+}
+
+function rename(path, name, newName, callBack) {
+  if (!fs.existsSync(path)) throw `path doesnt exists - ${path}`;
+  fs.rename(path + name, path + newName, callBack);
+}
+
+function delete_file(file) {
+  if (!fs.existsSync(file)) throw `file doesnt exists to delete- ${file}`;
+  fs.unlink(file, (err) => {
+    if (err) {
+      console.error(err);
+    } else console.log(`Successfully removed ${file}`);
+  });
+}
+
+function getMyProfile(user, callBack) {
+  if (!fs.existsSync(`${baseDir}/${user}`))
+    throw `User doesnt exists - ${path}`;
+  let profile = JSON.parse(fs.readFileSync(`${baseDir}/${user}/profile.json`));
+  callBack(profile);
+}
+
+function updateProfile(newProfile) {
+  let user = newProfile.userid;
+  if (!fs.existsSync(`${baseDir}/${user}`))
+    throw `User doesnt exists - ${user}`;
+  let profilePath = `${baseDir}/${user}/profile.json`;
+  fs.writeFile(profilePath, JSON.stringify(newProfile, null, 2), (err) => {
+    if (err) throw err;
+    console.log(`Data updated to file - ${user}`);
+  });
+}
 // function getFile(path, res) {
 //   //if (!fs.existsSync(path)) throw `path doesnt exists - ${path}`;
 
@@ -72,4 +118,9 @@ module.exports = {
   createNewUser: createNewUser,
   getImages: getImages,
   // getFile: getFile,
+  login: login,
+  rename: rename,
+  delete_file: delete_file,
+  getMyProfile: getMyProfile,
+  updateProfile: updateProfile,
 };
