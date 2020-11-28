@@ -2,6 +2,8 @@ var userLib = require("./userlib");
 var bodyParser = require("body-parser");
 var session = require("express-session");
 const activeSession = {};
+const activeAdmin = {};
+const adminPassword = "admin123";
 
 // user = {name:"SAndeep S J",userid:"sandeepsj",passord:"sandeep", email:"sandeepsj@gmail.com"}
 // try {
@@ -41,6 +43,16 @@ var auth = function (req, res, next) {
   // console.log(activeSession);
 
   if (activeSession[req.sessionID] !== undefined) return next();
+  else {
+    res.status(401);
+    throw `user not logged in - ${req.body.username}`;
+  }
+};
+
+var adminAuth = function (req, res, next) {
+  // console.log(activeSession);
+
+  if (activeAdmin[req.sessionID] !== undefined) return next();
   else {
     res.status(401);
     throw `user not logged in - ${req.body.username}`;
@@ -93,6 +105,14 @@ app.post("/loginAuth", (req, res) => {
   }
 });
 
+app.post("/adminLoginAuth", (req, res) => {
+  if (req.body.password === adminPassword) {
+    activeAdmin[req.sessionID] = "admin";
+  } else {
+    console.log("Wrong password for Admin Authentication");
+  }
+});
+
 app.get("/rename", auth, (req, res) => {
   try {
     userLib.rename(req.body.path, req.body.oldName, req.body.newName, () => {
@@ -139,7 +159,7 @@ app.get("/getMyUserName", (req, res) => {
   }
 });
 
-// app.get("/getFileAuth", (req, res) => {
+// app.get("/getFileAuth",  (req, res) => {
 //   console.log(req.query);
 //   userLib.getFile(req.query["dir"], res);
 // });
