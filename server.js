@@ -1,6 +1,9 @@
 var userLib = require("./userlib");
 var bodyParser = require("body-parser");
 var session = require("express-session");
+var adminLib = require("./adminlib");
+var base64Img = require("base64-img");
+
 const activeSession = {};
 const activeAdmin = {};
 const adminPassword = "admin123";
@@ -38,21 +41,14 @@ app.use(
     cookie: { secure: false },
   })
 );
-
+bodyParser = {
+  json: { limit: "50mb", extended: true },
+  urlencoded: { limit: "50mb", extended: true },
+};
 var auth = function (req, res, next) {
   // console.log(activeSession);
 
   if (activeSession[req.sessionID] !== undefined) return next();
-  else {
-    res.status(401);
-    throw `user not logged in - ${req.body.username}`;
-  }
-};
-
-var adminAuth = function (req, res, next) {
-  // console.log(activeSession);
-
-  if (activeAdmin[req.sessionID] !== undefined) return next();
   else {
     res.status(401);
     throw `user not logged in - ${req.body.username}`;
@@ -159,9 +155,81 @@ app.get("/getMyUserName", (req, res) => {
   }
 });
 
-// app.get("/getFileAuth",  (req, res) => {
-//   console.log(req.query);
-//   userLib.getFile(req.query["dir"], res);
-// });
+app.get("/getMyStatus", auth, (req, res) => {
+  try {
+    res.send({
+      used: adminLib.getUserDiskUsage(activeSession[req.sessionID]),
+      allowed: adminLib.getUserAllowedSpace(activeSession[req.sessionID]),
+      photosCount: adminLib.getPhotosCount(
+        `./storage/${activeSession[req.sessionID]}`
+      ),
+    });
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+app.post("/uploadImage", auth, (req, res) => {
+  try {
+    base64Img.img(
+      req.body.image,
+      `./storage/${activeSession[req.sessionID]}/${req.body.dir}`,
+      req.body.fname,
+      function (err, filepath) {
+        res.send("Sucess");
+      }
+    );
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+/*  
+Here onwared Admin requests Starts
+...............
+.
+.
+.
+.
+.*/
+
+var adminAuth = function (req, res, next) {
+  // console.log(activeSession);
+
+  if (activeAdmin[req.sessionID] !== undefined) return next();
+  else {
+    res.status(401);
+    throw `admin not logged in`;
+  }
+};
+
+app.get("/getAllUserData", adminAuth, (req, res) => {
+  try {
+    res.send(adminLib.getAllUserData());
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+app.post("/updateAllowedSpace", adminAuth, (req, res) => {
+  try {
+    adminLib.updateAllowedSpace(req.body.userid, req.body["Allowed Space"]);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+app.get("/getCounts", adminAuth, (req, res) => {
+  try {
+    res.send({
+      count_of_photos: adminLib.getPhotosCount(),
+      count_of_users: adminLib.getUsersCount(),
+      total_disk_space: adminLib.getTotalDiskusage(),
+    });
+  } catch (err) {
+    console.log(err);
+  }
+});
+
 const port = process.env.PORT || 3005;
 app.listen(port, () => console.log(`listening to port ${port}`));
