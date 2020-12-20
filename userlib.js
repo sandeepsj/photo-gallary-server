@@ -1,5 +1,8 @@
 var fs = require("fs");
 var baseDir = "./storage";
+var logLib = require("./loglib");
+var dblib = require("./userdblib");
+
 function createNewUser(user) {
   var profilePath = `${baseDir}/${user.userid}/profile.json`;
   var userDir = `${baseDir}/${user.userid}`;
@@ -14,10 +17,14 @@ function createNewUser(user) {
     if (err) throw err;
     console.log(`SuccessFully Created Profile File for - ${user.userid}`);
   });
+
+  user["Allowed Space"] = 200;
   fs.writeFile(profilePath, JSON.stringify(user, null, 2), (err) => {
     if (err) throw err;
     console.log(`Data written to file - ${user.userid}`);
+    logLib.createLogFile(user);
   });
+  dblib.addNewUser(user);
 }
 
 function getImages(path, callBack) {
@@ -51,6 +58,14 @@ function getImages(path, callBack) {
 }
 
 function login(user, password, callBack) {
+  // dblib.getPassword(user, (correctPassword) => {
+  //   console.log(password, correctPassword, "asdf");
+  //   if (correctPassword === password) {
+  //     callBack();
+  //   } else {
+  //     throw `password is incorrect for user - ${user}`;
+  //   }
+  // });
   if (fs.existsSync(`${baseDir}/${user}`)) {
     let profile = JSON.parse(
       fs.readFileSync(`${baseDir}/${user}/profile.json`)
@@ -66,8 +81,9 @@ function login(user, password, callBack) {
 }
 
 function rename(path, name, newName, callBack) {
-  if (!fs.existsSync(path)) throw `path doesnt exists - ${path}`;
-  fs.rename(path + name, path + newName, callBack);
+  //if (!fs.existsSync(path)) throw `path doesnt exists - ${path}`;
+  console.log(path + "/" + name, path + "/" + newName);
+  fs.rename(path + "/" + name, path + "/" + newName + ".jpg", callBack);
 }
 
 function delete_file(file) {
@@ -82,11 +98,12 @@ function delete_file(file) {
 function getMyProfile(user, callBack) {
   if (!fs.existsSync(`${baseDir}/${user}`))
     throw `User doesnt exists - ${path}`;
-  let profile = JSON.parse(fs.readFileSync(`${baseDir}/${user}/profile.json`));
-  callBack(profile);
+  dblib.getMyProfile(user, callBack);
+  // let profile = JSON.parse(fs.readFileSync(`${baseDir}/${user}/profile.json`));
+  // callBack(profile);
 }
 
-function updateProfile(newProfile) {
+function updateProfile(newProfile, callBack) {
   let user = newProfile.userid;
   if (!fs.existsSync(`${baseDir}/${user}`))
     throw `User doesnt exists - ${user}`;
@@ -95,6 +112,7 @@ function updateProfile(newProfile) {
     if (err) throw err;
     console.log(`Data updated to file - ${user}`);
   });
+  dblib.updateProfile(user, newProfile, callBack);
 }
 // function getFile(path, res) {
 //   //if (!fs.existsSync(path)) throw `path doesnt exists - ${path}`;

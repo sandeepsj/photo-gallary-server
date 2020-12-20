@@ -1,8 +1,9 @@
-var userLib = require("./userlib");
-var bodyParser = require("body-parser");
-var session = require("express-session");
-var adminLib = require("./adminlib");
-var base64Img = require("base64-img");
+const userLib = require("./userlib");
+const bodyParser = require("body-parser");
+const session = require("express-session");
+const adminLib = require("./adminlib");
+const base64Img = require("base64-img");
+const logLib = require("./loglib");
 
 const activeSession = {};
 const activeAdmin = {};
@@ -41,10 +42,6 @@ app.use(
     cookie: { secure: false },
   })
 );
-bodyParser = {
-  json: { limit: "50mb", extended: true },
-  urlencoded: { limit: "50mb", extended: true },
-};
 var auth = function (req, res, next) {
   // console.log(activeSession);
 
@@ -53,6 +50,10 @@ var auth = function (req, res, next) {
     res.status(401);
     throw `user not logged in - ${req.body.username}`;
   }
+};
+
+writeLog = function (user, head, message) {
+  logLib.addlog(user, head, message);
 };
 
 app.get("/", (req, res) => {
@@ -69,15 +70,17 @@ app.post("/signup", (req, res) => {
 });
 
 app.get("/logout", (req, res) => {
-  console.log("Successfully logged out", activeSession[req.sessionID]);
-  activeSession[req.sessionID] = undefined;
+  var user = activeSession[req.sessionID];
+  if (user !== undefined) writeLog(user, "logout", "User Logged out");
+  console.log("Successfully logged out", user);
+  user = undefined;
   req.session.destroy();
   res.send("logout success");
 });
 
 app.post("/getImagesAuth", auth, (req, res) => {
   // console.log(req.session, "session", req.sessionID);
-  let user = activeSession[req.sessionID];
+  const user = activeSession[req.sessionID];
   try {
     userLib.getImages(`storage/${user}/${req.body.path}`, (files) =>
       res.send(files)
@@ -94,6 +97,7 @@ app.post("/loginAuth", (req, res) => {
     userLib.login(req.body.username, req.body.password, () => {
       activeSession[req.sessionID] = req.body.username;
       console.log(`Successfully logged in ${req.body.username}`);
+      writeLog(req.body.username, "loginAuth", "logged in");
       res.send(true);
     });
   } catch (error) {
@@ -109,19 +113,34 @@ app.post("/adminLoginAuth", (req, res) => {
   }
 });
 
-app.get("/rename", auth, (req, res) => {
+app.post("/rename", auth, (req, res) => {
+  const user = activeSession[req.sessionID];
   try {
-    userLib.rename(req.body.path, req.body.oldName, req.body.newName, () => {
-      console.log("renamed");
-    });
+    userLib.rename(
+      "./" + req.body.path,
+      req.body.oldName,
+      req.body.newName,
+      () => {
+        res.send(true);
+        writeLog(
+          user,
+          "rename",
+          `${"./" + req.body.path}: ${req.body.oldName} changed to ${
+            req.body.newName
+          }`
+        );
+      }
+    );
   } catch (err) {
     console.log(err);
   }
 });
 
 app.post("/delete_file", auth, (req, res) => {
+  const user = activeSession[req.sessionID];
   try {
     userLib.delete_file(req.body.file);
+    writeLog(user, "delete_file", `${req.body.file} is deleted`);
     res.send("Success");
   } catch (err) {
     res.send(err);
@@ -130,8 +149,10 @@ app.post("/delete_file", auth, (req, res) => {
 });
 
 app.get("/getMyProfile", auth, (req, res) => {
+  const user = activeSession[req.sessionID];
   try {
     userLib.getMyProfile(activeSession[req.sessionID], (profile) => {
+      writeLog(user, "getMyProfile");
       res.send(profile);
     });
   } catch (err) {
@@ -140,8 +161,10 @@ app.get("/getMyProfile", auth, (req, res) => {
 });
 
 app.post("/updateProfile", auth, (req, res) => {
+  const user = activeSession[req.sessionID];
   try {
     userLib.updateProfile(req.body);
+    writeLog(user, "updateProfile", "Profile Updated");
   } catch (err) {
     console.log(err);
   }
@@ -157,12 +180,16 @@ app.get("/getMyUserName", (req, res) => {
 
 app.get("/getMyStatus", auth, (req, res) => {
   try {
-    res.send({
-      used: adminLib.getUserDiskUsage(activeSession[req.sessionID]),
-      allowed: adminLib.getUserAllowedSpace(activeSession[req.sessionID]),
-      photosCount: adminLib.getPhotosCount(
-        `./storage/${activeSession[req.sessionID]}`
-      ),
+    adminLib.getMyStatus(activeSession[req.sessionID], (allowedSpace) => {
+      status = {
+        used: adminLib.getUserDiskUsage(activeSession[req.sessionID]),
+        allowed: allowedSpace,
+        // allowed: adminLib.getUserAllowedSpace(activeSession[req.sessionID]),
+        photosCount: adminLib.getPhotosCount(
+          `./storage/${activeSession[req.sessionID]}`
+        ),
+      };
+      res.send(status);
     });
   } catch (err) {
     console.log(err);
@@ -170,6 +197,7 @@ app.get("/getMyStatus", auth, (req, res) => {
 });
 
 app.post("/uploadImage", auth, (req, res) => {
+  const user = activeSession[req.sessionID];
   try {
     base64Img.img(
       req.body.image,
@@ -177,6 +205,7 @@ app.post("/uploadImage", auth, (req, res) => {
       req.body.fname,
       function (err, filepath) {
         res.send("Sucess");
+        writeLog(user, "uploadImage", `New image ${req.body.fname} Uploaded`);
       }
     );
   } catch (err) {
@@ -205,7 +234,7 @@ var adminAuth = function (req, res, next) {
 
 app.get("/getAllUserData", adminAuth, (req, res) => {
   try {
-    res.send(adminLib.getAllUserData());
+    adminLib.getAllUserData(res);
   } catch (err) {
     console.log(err);
   }
