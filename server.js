@@ -213,6 +213,18 @@ app.post("/uploadImage", auth, (req, res) => {
   }
 });
 
+app.post("/newFolder", auth, (req, res) => {
+  const user = activeSession[req.sessionID];
+  try {
+    userLib.newFolder(
+      req.body.name,
+      `storage/${user}/${req.body.path}`,
+      (suc) => res.send("suc")
+    );
+  } catch (error) {
+    console.log(error);
+  }
+});
 /*  
 Here onwared Admin requests Starts
 ...............

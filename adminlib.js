@@ -50,6 +50,7 @@ getPhotosCount = function (dirPath) {
   files.forEach(function (file) {
     fileDir = dirPath + "/" + file;
     //console.log(fileDir);
+    if (file.match(/.(json)$/i)) count -= 1;
     if (fs.statSync(fileDir).isDirectory()) count += getPhotosCount(fileDir);
     else count += 1;
   });

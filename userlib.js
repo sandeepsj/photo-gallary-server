@@ -57,6 +57,17 @@ function getImages(path, callBack) {
   });
 }
 
+function newFolder(name, path, callback) {
+  fs.mkdir(`${path}/${name}`, function (err) {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log("New directory successfully created.");
+      callback(1);
+    }
+  });
+}
+
 function login(user, password, callBack) {
   // dblib.getPassword(user, (correctPassword) => {
   //   console.log(password, correctPassword, "asdf");
@@ -141,4 +152,5 @@ module.exports = {
   delete_file: delete_file,
   getMyProfile: getMyProfile,
   updateProfile: updateProfile,
+  newFolder: newFolder,
 };
