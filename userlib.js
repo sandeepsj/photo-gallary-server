@@ -40,7 +40,7 @@ function getImages(path, callBack) {
     const images = files.filter((filename) => {
       //console.log(filename.slice(-5).localeCompare(".json"));
 
-      if (filename.match(/.(jpg|jpeg|png|gif)$/i)) return true;
+      if (filename.match(/.(jpg|jpeg|png|gif|pdf)$/i)) return true;
       return false;
     });
     const folders = files.filter((filename) => {
